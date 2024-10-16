@@ -231,12 +231,12 @@ export class CampaignCreatorComponent implements OnInit {
     now.setDate(11);
 
     this.campaignForm = this.fb.group({
-      brand: ['Siemens', Validators.required],
-      name: ['Siemens Kahve Makinasi Black Friday', [Validators.required, Validators.maxLength(250)]],
-      brief: ['Akilli kahve hazirlama, farkli icecek secenekleri ve kullanici dostu arayuz'],
-      url: ['https://www.bosch-home.com.tr/urun-listesi/elektrikli-supurgeler/sarjli-dikey-supurgeler/unlimited/unlimited10', Validators.required],
-      start_date: [now, Validators.required],
-      payment_terms: [60, [Validators.required, Validators.min(1)]],
+      brand: ['', Validators.required],
+      name: ['', [Validators.required, Validators.maxLength(250)]],
+      brief: [''],
+      url: ['', Validators.required],
+      start_date: [null, Validators.required],
+      payment_terms: [0, [Validators.required, Validators.min(1)]],
       platforms: [[], Validators.required],
       contentTypes: this.fb.array([]),
     });
