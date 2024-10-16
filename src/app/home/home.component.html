@@ -1,0 +1,26 @@
+<mat-drawer-container autosize>
+  <mat-drawer #drawer mode="over">
+    <mat-nav-list>
+      @for (navItem of navItems; track navItem.path) {
+        <a
+          [routerLinkActiveOptions]="{ exact: true }"
+          [routerLink]="navItem.path"
+          mat-list-item
+          (click)="drawer.toggle()"
+          routerLinkActive="active-link"
+        >
+          <span>{{ navItem.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-drawer>
+  <mat-toolbar>
+    <button (click)="drawer.toggle()" mat-icon-button>
+      <mat-icon>lunch_dining</mat-icon>
+    </button>
+    <span class="spacer"></span>
+    <span>Kampanya Yonetim Sistemi</span>
+    <span class="spacer"></span>
+  </mat-toolbar>
+  <router-outlet></router-outlet>
+</mat-drawer-container>
