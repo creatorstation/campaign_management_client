@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
@@ -12,12 +13,14 @@ interface Influencer {
   followers: number;
   categories: string;
   email: string;
+  username: string;
+  selectedEmail?: string;
 }
 
 @Component({
   selector: 'app-campaign-summary',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatTableModule, MatSelectModule, MatButtonModule],
+  imports: [CommonModule, FormsModule, MatCardModule, MatTableModule, MatSelectModule, MatButtonModule],
   template: `
     <div class="campaign-summary">
       <h2>Campaign Summary</h2>
@@ -97,7 +100,7 @@ interface Influencer {
         <ng-container matColumnDef="email">
           <th mat-header-cell *matHeaderCellDef>Email</th>
           <td mat-cell *matCellDef="let influencer">
-            <mat-select placeholder="Select email">
+            <mat-select [(ngModel)]="influencer.selectedEmail">
               @for (email of infEmails(influencer); track email) {
                 <mat-option [value]="email">
                   {{ email }}
@@ -110,10 +113,6 @@ interface Influencer {
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
       </table>
-
-      <div class="button-container">
-        <button mat-raised-button color="primary">Kaydet</button>
-      </div>
     </div>
   `,
   styles: [`
@@ -122,29 +121,34 @@ interface Influencer {
       max-width: 1200px;
       margin: 0 auto;
     }
+
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 20px;
       margin-bottom: 30px;
     }
+
     mat-card {
       height: 100%;
     }
+
     table {
       width: 100%;
       margin-bottom: 30px;
     }
+
     .button-container {
       display: flex;
       justify-content: flex-end;
     }
+
     h2 {
       margin-bottom: 20px;
       font-size: 24px;
       font-weight: bold;
     }
-  `]
+  `],
 })
 export class CampaignSummaryComponent {
   @Input() campaignData: any;
@@ -153,28 +157,29 @@ export class CampaignSummaryComponent {
   displayedColumns: string[] = ['name', 'followers', 'categories', 'email'];
 
   constructor() {
-    // Initialize with sample data if not provided
-    if (!this.campaignData) {
-      this.campaignData = {
-        brand: 'TechGadget',
-        name: 'Summer Tech Fest',
-        brief: 'Promote our latest gadgets for the summer season',
-        url: 'https://techgadget.com/summer-fest',
-        startDate: new Date('2023-06-01'),
-        paymentTerm: 30
-      };
-    }
-
-    console.log("Influencers",this.influencers);
-
     if (this.influencers.length === 0) {
       this.influencers = [];
     }
   }
 
   infEmails(influencer: Influencer): string[] {
-    const emails = [influencer.custom_email, ...influencer.emails.split(' '), influencer.email].filter(Boolean);
+    const emails = [];
 
-    return Array.from(new Set(emails));
+    emails.push(influencer?.custom_email);
+
+    const bioEmails = influencer?.emails?.split(' ');
+    if (bioEmails) {
+      emails.push(...bioEmails);
+    }
+
+    emails.push(influencer?.email);
+
+    const val = Array.from(new Set(emails)).filter(Boolean);
+
+    if (influencer.selectedEmail == null) {
+      influencer.selectedEmail = val[0];
+    }
+
+    return val;
   }
 }

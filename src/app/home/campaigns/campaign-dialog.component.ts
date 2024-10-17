@@ -15,6 +15,14 @@ import { InfluencerTableComponent } from './influencer-table.component';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CampaignSummaryComponent } from './campaign-summary.component';
+import {
+  MatAccordion,
+  MatExpansionPanel,
+  MatExpansionPanelHeader,
+  MatExpansionPanelTitle,
+} from '@angular/material/expansion';
+import { MatChipGrid, MatChipInput, MatChipInputEvent, MatChipRow } from '@angular/material/chips';
+import { COMMA, ENTER, SPACE } from '@angular/cdk/keycodes';
 
 interface ContentType {
   name: string;
@@ -27,7 +35,10 @@ interface ContentType {
   imports: [
     CommonModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatSelectModule,
     MatDatepickerModule, MatNativeDateModule, MatButtonModule, MatIconModule, MatCheckboxModule,
-    MatStepperModule, InfluencerSelectorComponent, InfluencerTableComponent, CampaignSummaryComponent,
+    MatStepperModule, InfluencerSelectorComponent, InfluencerTableComponent,
+    CampaignSummaryComponent,
+    MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader,
+    MatChipGrid, MatChipRow, MatChipInput,
   ],
   template: `
     <mat-stepper #stepper (selectionChange)="$event.selectedIndex === 2 ? whenOnControlPage() : whenOnSummaryPage()">
@@ -70,6 +81,34 @@ interface ContentType {
                 <input matInput type="number" formControlName="payment_terms" required>
               </mat-form-field>
             </div>
+
+            <mat-accordion>
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    Gelismis
+                  </mat-panel-title>
+                </mat-expansion-panel-header>
+                <mat-form-field class="cc_email_input" appearance="outline">
+                  <mat-label>CC Emails</mat-label>
+                  <mat-chip-grid #chipGrid aria-label="Enter emails">
+                    <mat-chip-row *ngFor="let email of ccEmails" (removed)="removeEmail(email)">
+                      {{ email }}
+                      <button matChipRemove [attr.aria-label]="'remove ' + email">
+                        <mat-icon>cancel</mat-icon>
+                      </button>
+                    </mat-chip-row>
+                  </mat-chip-grid>
+                  <input [matChipInputFor]="chipGrid"
+                         [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
+                         [matChipInputAddOnBlur]="true"
+                         (matChipInputTokenEnd)="addEmail($event)">
+                  <mat-error *ngIf="campaignForm.get('cc_emails')?.hasError('invalidEmail')">
+                    Please enter a valid email address
+                  </mat-error>
+                </mat-form-field>
+              </mat-expansion-panel>
+            </mat-accordion>
 
             <mat-form-field appearance="outline">
               <mat-label>Platformlar</mat-label>
@@ -121,6 +160,12 @@ interface ContentType {
       <mat-step>
         <ng-template matStepLabel>Kontrol</ng-template>
         <app-influencer-table #influencerTableComponent/>
+        <div class="button-container">
+          <button mat-stroked-button matStepperNext color="primary" type="submit"
+                  [disabled]="influencerSelectorComponent.selectedInfluencers.length === 0">
+            Sonraki
+          </button>
+        </div>
       </mat-step>
       <mat-step>
         <ng-template matStepLabel>Ozet</ng-template>
@@ -135,6 +180,10 @@ interface ContentType {
             contentTypes: campaignForm.get('contentTypes')?.value,
           }"
           #campaignSummaryComponent/>
+
+        <div class="button-container">
+          <button mat-raised-button color="primary" (click)="onSave()" >Kaydet</button>
+        </div>
       </mat-step>
     </mat-stepper>
   `,
@@ -150,6 +199,7 @@ interface ContentType {
       font-weight: bold;
       margin-bottom: 20px;
     }
+
 
     form {
       display: flex;
@@ -214,12 +264,18 @@ interface ContentType {
     .number-input {
       width: 100px;
     }
+
+    .cc_email_input {
+      width: 100%;
+    }
   `],
 })
 export class CampaignCreatorComponent implements OnInit {
   campaignForm: FormGroup;
   contentTypes: ContentType[] = [];
   platforms: string[] = [];
+  ccEmails: string[] = [];
+  separatorKeysCodes: number[] = [ENTER, COMMA, SPACE];
 
   @ViewChild('influencerSelectorComponent') selectorComponent!: InfluencerSelectorComponent;
   @ViewChild('influencerTableComponent') tableComponent!: InfluencerTableComponent;
@@ -237,6 +293,7 @@ export class CampaignCreatorComponent implements OnInit {
       url: ['https://www.bosch-home.com.tr/urun-listesi/elektrikli-supurgeler/sarjli-dikey-supurgeler/unlimited/unlimited10', Validators.required],
       start_date: [now, Validators.required],
       payment_terms: [60, [Validators.required, Validators.min(1)]],
+      cc_emails: [''],
       platforms: [[], Validators.required],
       contentTypes: this.fb.array([]),
     });
@@ -252,7 +309,7 @@ export class CampaignCreatorComponent implements OnInit {
   }
 
   fetchServices() {
-    return this.http.get<ContentType[]>('https://plantingathomas.app.n8n.cloud/webhook/services');
+    return this.http.get<ContentType[]>('https://auto.creatorstation.com/webhook/services');
   }
 
   initializeContentTypes() {
@@ -304,21 +361,50 @@ export class CampaignCreatorComponent implements OnInit {
   }
 
   whenOnControlPage() {
-    const sample = this.campaignForm.value.contentTypes.filter((x: any) => x.selected);
-
-    console.log({ sample });
-
     const usernames = this.selectorComponent.selectedInfluencers.map(a => a.username).join(',');
     this.tableComponent.fetchInfluencers(usernames);
   }
 
   whenOnSummaryPage() {
-    firstValueFrom(this.http.get('https://plantingathomas.app.n8n.cloud/webhook/influencers', {
+    firstValueFrom(this.http.get('https://auto.creatorstation.com/webhook/influencers', {
       params: {
         usernames: this.selectorComponent.selectedInfluencers.map(a => a.username).join(','),
       },
     })).then((res: any) => {
       this.summaryComponent.influencers = res;
     });
+  }
+
+  private isValidEmail(email: string): boolean {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email);
+  }
+
+  addEmail(event: MatChipInputEvent): void {
+    const value = (event.value || '').trim();
+    if (value && this.isValidEmail(value)) {
+      this.ccEmails.push(value);
+      this.campaignForm.patchValue({cc_emails: this.ccEmails.join(',')});
+      event.chipInput!.clear();
+    } else if (value) {
+      // Set error state
+      this.campaignForm.get('cc_emails')?.setErrors({'invalidEmail': true});
+    }
+  }
+
+  removeEmail(email: string): void {
+    const index = this.ccEmails.indexOf(email);
+    if (index >= 0) {
+      this.ccEmails.splice(index, 1);
+      this.campaignForm.patchValue({cc_emails: this.ccEmails.join(',')});
+    }
+  }
+
+  onSave() {
+    const onlySelectedServices = this.campaignForm.value.contentTypes.filter((x: any) => x.selected);
+    this.campaignForm.value.contentTypes = onlySelectedServices;
+
+    console.log('Campaign Form Value:', this.campaignForm.value);
+    console.log('Influencers:', this.summaryComponent.influencers);
   }
 }

@@ -104,7 +104,7 @@ export class InfluencerSelectorComponent implements OnInit {
   private http = inject(HttpClient);
 
   constructor(private fb: FormBuilder) {
-    firstValueFrom(this.http.get<Influencer[]>('https://plantingathomas.app.n8n.cloud/webhook/influencers'))
+    firstValueFrom(this.http.get<Influencer[]>('https://auto.creatorstation.com/webhook/influencers'))
       .then((res) => {
         this.influencers = res;
       })

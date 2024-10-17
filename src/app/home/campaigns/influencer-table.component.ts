@@ -30,7 +30,7 @@ interface Influencer {
   ],
   template: `
     <div class="influencer-contacts-container">
-      <h1>Influencer Contacts</h1>
+      <h1>Influencer Bilgileri</h1>
       <div class="table-container">
         <table mat-table [dataSource]="influencers">
           <ng-container matColumnDef="name">
@@ -62,7 +62,7 @@ interface Influencer {
                     </button>
                   </form>
                 } @else {
-                  {{ influencer.custom_email || influencer.emails.replaceAll(' ', ', ') || influencer.email }}
+                  {{ influencer.custom_email ?? influencer?.emails?.replaceAll(' ', ',') ?? influencer.email }}
                 }
               </div>
             </td>
@@ -91,8 +91,8 @@ interface Influencer {
   `,
   styles: [`
     .influencer-contacts-container {
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -171,7 +171,7 @@ export class InfluencerTableComponent implements OnInit {
       return;
     }
 
-    firstValueFrom(this.http.get<Influencer[]>('https://plantingathomas.app.n8n.cloud/webhook/influencers', {
+    firstValueFrom(this.http.get<Influencer[]>('https://auto.creatorstation.com/webhook/influencers', {
       params: { usernames },
     })).then(r => {
       this.influencers = r;
@@ -200,7 +200,7 @@ export class InfluencerTableComponent implements OnInit {
       this.editingUsername = null;
 
       if (oldEmail !== newEmail) {
-        firstValueFrom(this.http.patch('https://plantingathomas.app.n8n.cloud/webhook/influencers', {
+        firstValueFrom(this.http.patch('https://auto.creatorstation.com/webhook/influencers', {
           username,
           custom_email: newEmail,
         }));
