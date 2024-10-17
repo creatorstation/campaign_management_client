@@ -90,7 +90,7 @@ interface ContentType {
                   </mat-panel-title>
                 </mat-expansion-panel-header>
                 <mat-form-field class="cc_email_input" appearance="outline">
-                  <mat-label>CC Emails</mat-label>
+                  <mat-label>CC Emailler</mat-label>
                   <mat-chip-grid #chipGrid aria-label="Enter emails">
                     <mat-chip-row *ngFor="let email of ccEmails" (removed)="removeEmail(email)">
                       {{ email }}
@@ -103,7 +103,7 @@ interface ContentType {
                          [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
                          [matChipInputAddOnBlur]="true"
                          (matChipInputTokenEnd)="addEmail($event)">
-                  <mat-error *ngIf="campaignForm.get('cc_emails')?.hasError('invalidEmail')">
+                  <mat-error *ngIf="campaignForm.get('cc_emails')?.errors">
                     Please enter a valid email address
                   </mat-error>
                 </mat-form-field>
@@ -182,7 +182,7 @@ interface ContentType {
           #campaignSummaryComponent/>
 
         <div class="button-container">
-          <button mat-raised-button color="primary" (click)="onSave()" >Kaydet</button>
+          <button mat-raised-button color="primary" (click)="onSave()">Kaydet</button>
         </div>
       </mat-step>
     </mat-stepper>
@@ -294,6 +294,7 @@ export class CampaignCreatorComponent implements OnInit {
       payment_terms: [0, [Validators.required, Validators.min(1)]],
       platforms: [[], Validators.required],
       contentTypes: this.fb.array([]),
+      cc_emails: [''],
     });
   }
 
@@ -326,7 +327,7 @@ export class CampaignCreatorComponent implements OnInit {
     const selectedPlatforms = this.campaignForm.get('platforms')?.value as string[];
     const contentTypesArray = this.campaignForm.get('contentTypes') as FormArray;
 
-    contentTypesArray.controls.forEach((control, index) => {
+    contentTypesArray.controls.forEach((control) => {
       const isSelected = selectedPlatforms.includes(control.get('platform')?.value);
       if (isSelected) {
         control.enable();
@@ -364,9 +365,15 @@ export class CampaignCreatorComponent implements OnInit {
   }
 
   whenOnSummaryPage() {
+    const usernames = this.selectorComponent.selectedInfluencers.map(a => a.username).join(',');
+
+    if (usernames === '') {
+      return;
+    }
+
     firstValueFrom(this.http.get('https://auto.creatorstation.com/webhook/influencers', {
       params: {
-        usernames: this.selectorComponent.selectedInfluencers.map(a => a.username).join(','),
+        usernames,
       },
     })).then((res: any) => {
       this.summaryComponent.influencers = res;
@@ -400,9 +407,12 @@ export class CampaignCreatorComponent implements OnInit {
 
   onSave() {
     const onlySelectedServices = this.campaignForm.value.contentTypes.filter((x: any) => x.selected);
-    this.campaignForm.value.contentTypes = onlySelectedServices;
 
     console.log('Campaign Form Value:', this.campaignForm.value);
     console.log('Influencers:', this.summaryComponent.influencers);
+
+    const scope = onlySelectedServices.map((x: any) => `${x.count} ${x.platform} ${x.name}`).join('\n');
+
+    console.log('Scope:', scope);
   }
 }

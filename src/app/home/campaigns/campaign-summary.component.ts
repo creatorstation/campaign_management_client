@@ -23,7 +23,7 @@ interface Influencer {
   imports: [CommonModule, FormsModule, MatCardModule, MatTableModule, MatSelectModule, MatButtonModule],
   template: `
     <div class="campaign-summary">
-      <h2>Campaign Summary</h2>
+      <h2>Kampanya Özeti</h2>
       <div class="summary-grid">
         <mat-card>
           <mat-card-header>
@@ -36,7 +36,7 @@ interface Influencer {
 
         <mat-card>
           <mat-card-header>
-            <mat-card-title>Campaign Name</mat-card-title>
+            <mat-card-title>Kampanya Adi</mat-card-title>
           </mat-card-header>
           <mat-card-content>
             <p>{{ campaignData.name }}</p>
@@ -63,7 +63,7 @@ interface Influencer {
 
         <mat-card>
           <mat-card-header>
-            <mat-card-title>Start Date</mat-card-title>
+            <mat-card-title>Baslama Tarihi</mat-card-title>
           </mat-card-header>
           <mat-card-content>
             <p>{{ campaignData.start_date | date:'yyyy-MM-dd' }}</p>
@@ -72,10 +72,20 @@ interface Influencer {
 
         <mat-card>
           <mat-card-header>
-            <mat-card-title>Payment Term</mat-card-title>
+            <mat-card-title>Ödeme vadesi</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <p>Net {{ campaignData.paymentTerm }}</p>
+            <p>{{ campaignData.paymentTerm }}</p>
+          </mat-card-content>
+        </mat-card>
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Kapsam</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @for (s of getScope(); track s) {
+              <p>{{s.count}} {{s.platform}} {{s.name}}</p>
+            }
           </mat-card-content>
         </mat-card>
       </div>
@@ -160,6 +170,10 @@ export class CampaignSummaryComponent {
     if (this.influencers.length === 0) {
       this.influencers = [];
     }
+  }
+
+  getScope() {
+    return this.campaignData.contentTypes.filter((x: any) => x.selected && x.count !== 0);
   }
 
   infEmails(influencer: Influencer): string[] {
