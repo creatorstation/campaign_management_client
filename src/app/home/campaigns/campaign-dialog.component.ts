@@ -9,7 +9,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatStepperModule } from '@angular/material/stepper';
+import { MatStepper, MatStepperModule } from '@angular/material/stepper';
 import { InfluencerSelectorComponent } from './influencer-selector.component';
 import { InfluencerTableComponent } from './influencer-table.component';
 import { HttpClient } from '@angular/common/http';
@@ -24,6 +24,7 @@ import {
 import { MatChipGrid, MatChipInput, MatChipInputEvent, MatChipRow } from '@angular/material/chips';
 import { COMMA, ENTER, SPACE } from '@angular/cdk/keycodes';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 interface ContentType {
   name: string;
@@ -39,7 +40,7 @@ interface ContentType {
     MatStepperModule, InfluencerSelectorComponent, InfluencerTableComponent,
     CampaignSummaryComponent,
     MatAccordion, MatExpansionPanel, MatExpansionPanelTitle, MatExpansionPanelHeader,
-    MatChipGrid, MatChipRow, MatChipInput,
+    MatChipGrid, MatChipRow, MatChipInput, MatProgressSpinner,
   ],
   template: `
     <mat-stepper #stepper (selectionChange)="$event.selectedIndex === 2 ? whenOnControlPage() : whenOnSummaryPage()">
@@ -56,7 +57,7 @@ interface ContentType {
             <mat-form-field appearance="outline">
               <mat-label>Kampanya Adı</mat-label>
               <input matInput formControlName="name" required maxlength="250">
-              <mat-hint align="end">{{ campaignForm.get('name')?.value!.length || 0 }}/250</mat-hint>
+              <mat-hint align="end">{{ campaignForm.get('name')?.value?.length || 0 }}/250</mat-hint>
             </mat-form-field>
 
             <mat-form-field appearance="outline">
@@ -112,7 +113,7 @@ interface ContentType {
             </mat-accordion>
 
             <mat-form-field appearance="outline">
-              <mat-label>Platformlar</mat-label>
+              <mat-label>{{ loading ? 'Yukleniyor' : 'Platformlar' }}</mat-label>
               <mat-select formControlName="platforms" multiple required (selectionChange)="onPlatformsChange()">
                 <mat-option *ngFor="let platform of platforms" [value]="platform">{{ platform }}</mat-option>
               </mat-select>
@@ -139,10 +140,11 @@ interface ContentType {
                 </div>
               </div>
             </div>
-
-            <button mat-stroked-button matStepperNext color="primary" type="submit" [disabled]="!campaignForm.valid">
-              Sonraki
-            </button>
+            <div class="button-container">
+              <button mat-stroked-button matStepperNext color="primary" type="submit" [disabled]="!campaignForm.valid">
+                Sonraki
+              </button>
+            </div>
           </form>
         </div>
       </mat-step>
@@ -150,7 +152,11 @@ interface ContentType {
         <ng-template matStepLabel>Influencer</ng-template>
         <div class="influencer-selector-container">
           <app-influencer-selector #influencerSelectorComponent/>
-          <div class="button-container">
+          <div class="button-container" style="justify-content: space-around">
+            <button mat-stroked-button matStepperPrevious color="primary" type="submit">
+              Önceki
+            </button>
+            <span></span>
             <button mat-stroked-button matStepperNext color="primary" type="submit"
                     [disabled]="influencerSelectorComponent.selectedInfluencers.length === 0">
               Sonraki
@@ -161,9 +167,12 @@ interface ContentType {
       <mat-step>
         <ng-template matStepLabel>Kontrol</ng-template>
         <app-influencer-table #influencerTableComponent/>
-        <div class="button-container">
+        <div class="button-container" style="justify-content: space-between">
+          <button mat-stroked-button matStepperPrevious color="primary" type="submit">
+            Önceki
+          </button>
           <button mat-stroked-button matStepperNext color="primary" type="submit"
-                  [disabled]="influencerSelectorComponent.selectedInfluencers.length === 0">
+                  [disabled]="hasEmptyMail()">
             Sonraki
           </button>
         </div>
@@ -182,13 +191,27 @@ interface ContentType {
           }"
           #campaignSummaryComponent/>
 
-        <div class="button-container">
-          <button mat-raised-button (click)="onSave()">Kaydet</button>
+        <div class="button-container" style="justify-content: right">
+          <button [disabled]="loading" mat-flat-button (click)="onSave()">
+          {{ loading ? 'Kaydediliyor...' : 'Kaydet' }}
+          </button>
         </div>
       </mat-step>
     </mat-stepper>
   `,
   styles: [`
+    ::ng-deep .mat-horizontal-stepper-wrapper {
+      align-items: center;
+
+      .mat-horizontal-stepper-header-container {
+        width: 80%;
+
+        .mat-step-header {
+          // pointer-events: none;
+        }
+      }
+    }
+
     .campaign-creator {
       max-width: 600px;
       margin: 0 auto;
@@ -258,7 +281,7 @@ interface ContentType {
     .button-container {
       display: flex;
       justify-content: flex-end;
-      margin-top: 16px;
+      margin-top: 1em;
     }
 
     .number-input {
@@ -280,6 +303,13 @@ export class CampaignCreatorComponent implements OnInit {
   @ViewChild('influencerSelectorComponent') selectorComponent!: InfluencerSelectorComponent;
   @ViewChild('influencerTableComponent') tableComponent!: InfluencerTableComponent;
   @ViewChild('campaignSummaryComponent') summaryComponent!: CampaignSummaryComponent;
+  @ViewChild('stepper') stepper!: MatStepper;
+
+  loading = false;
+
+  hasEmptyMail() {
+    return this?.tableComponent?.influencers?.some((i: any) => !i.email && !i.emails && !i.custom_email);
+  }
 
   constructor(private fb: FormBuilder, private http: HttpClient, private snack: MatSnackBar) {
     const now = new Date();
@@ -287,12 +317,12 @@ export class CampaignCreatorComponent implements OnInit {
     now.setDate(11);
 
     this.campaignForm = this.fb.group({
-      brand: ['', Validators.required],
-      name: ['', [Validators.required, Validators.maxLength(250)]],
-      brief: [''],
-      url: ['', Validators.required],
-      start_date: [null, Validators.required],
-      payment_terms: [null, [Validators.required, Validators.min(0)]],
+      brand: ['Siemens', Validators.required],
+      name: ['Siemens Kahve Makinasi Black Friday', [Validators.required, Validators.maxLength(250)]],
+      brief: ['Akilli kahve hazirlama, farkli icecek secenekleri ve kullanici dostu arayuz'],
+      url: ['https://www.bosch-home.com.tr/urun-listesi/elektrikli-supurgeler/sarjli-dikey-supurgeler/unlimited/unlimited10', Validators.required],
+      start_date: [now, Validators.required],
+      payment_terms: [60, [Validators.required, Validators.min(0)]],
       cc_emails: [''],
       platforms: [[], Validators.required],
       contentTypes: this.fb.array([]),
@@ -300,11 +330,14 @@ export class CampaignCreatorComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.loading = true;
     this.fetchServices().subscribe();
     firstValueFrom(this.fetchServices()).then(services => {
       this.contentTypes = services;
       this.platforms = [...new Set(this.contentTypes.map(ct => ct.platform))];
       this.initializeContentTypes();
+    }).finally(() => {
+      this.loading = false;
     });
   }
 
@@ -372,12 +405,16 @@ export class CampaignCreatorComponent implements OnInit {
       return;
     }
 
+    this.loading = true;
+
     firstValueFrom(this.http.get('https://auto.creatorstation.com/webhook/influencers', {
       params: {
         usernames,
       },
     })).then((res: any) => {
       this.summaryComponent.influencers = res;
+    }).finally(() => {
+      this.loading = false;
     });
   }
 
@@ -426,6 +463,8 @@ export class CampaignCreatorComponent implements OnInit {
       return;
     }
 
+    this.loading = true;
+
     firstValueFrom(this.http.post('https://auto.creatorstation.com/webhook/create-campaign', {
       scope,
       brand: this.campaignForm.value.brand,
@@ -443,10 +482,19 @@ export class CampaignCreatorComponent implements OnInit {
       this.snack.open('Kampanya başarıyla oluşturuldu', 'Kapat', {
         verticalPosition: 'top', duration: 3e4,
       });
+
+      this.campaignForm.reset();
+      this.selectorComponent.selectedInfluencers = [];
+      this.tableComponent.influencers = [];
+      this.summaryComponent.influencers = [];
+      this.stepper.reset();
+
     }).catch(() => {
       this.snack.open('Kampanya oluşturulurken bir hata oluştu', 'Kapat', {
         verticalPosition: 'top', duration: 3e4,
       });
+    }).finally(() => {
+      this.loading = false;
     });
   }
 }

@@ -62,7 +62,7 @@ interface Influencer {
                     </button>
                   </form>
                 } @else {
-                  {{ influencer.custom_email ?? influencer?.emails?.replaceAll(' ', ',') ?? influencer.email }}
+                  {{ getEmail(influencer) }}
                 }
               </div>
             </td>
@@ -155,6 +155,16 @@ interface Influencer {
 })
 export class InfluencerTableComponent implements OnInit {
   displayedColumns: string[] = ['name', 'followers', 'categories', 'email', 'actions'];
+
+  getEmail(influencer: any) {
+    const email = influencer.custom_email ?? influencer?.emails?.replaceAll(' ', ',') ?? influencer.email;
+
+    if (email == null) {
+      return '';
+    }
+
+    return email;
+  }
 
   influencers: Influencer[] = [];
   editingUsername: string | null = null;
