@@ -65,7 +65,6 @@ interface Influencer {
     .influencer-selector {
       max-width: 600px;
       margin: 0 auto;
-      padding: 20px;
 
       h1 {
         font-size: 24px;
