@@ -90,20 +90,20 @@ interface Influencer {
         </mat-card>
       </div>
 
-      <h2>Selected Influencers</h2>
+      <h2>Secilen Influencerlar</h2>
       <table mat-table [dataSource]="influencers" class="mat-elevation-z8">
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef>Name</th>
+          <th mat-header-cell *matHeaderCellDef>Isim</th>
           <td mat-cell *matCellDef="let influencer">{{ influencer.full_name }}</td>
         </ng-container>
 
         <ng-container matColumnDef="followers">
-          <th mat-header-cell *matHeaderCellDef>Followers</th>
+          <th mat-header-cell *matHeaderCellDef>Takipci</th>
           <td mat-cell *matCellDef="let influencer">{{ influencer.followers | number }}</td>
         </ng-container>
 
         <ng-container matColumnDef="categories">
-          <th mat-header-cell *matHeaderCellDef>Categories</th>
+          <th mat-header-cell *matHeaderCellDef>Kategori</th>
           <td mat-cell *matCellDef="let influencer">{{ influencer.category }}</td>
         </ng-container>
 

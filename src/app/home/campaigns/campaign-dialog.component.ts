@@ -23,6 +23,7 @@ import {
 } from '@angular/material/expansion';
 import { MatChipGrid, MatChipInput, MatChipInputEvent, MatChipRow } from '@angular/material/chips';
 import { COMMA, ENTER, SPACE } from '@angular/cdk/keycodes';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 interface ContentType {
   name: string;
@@ -78,7 +79,7 @@ interface ContentType {
 
               <mat-form-field appearance="outline" class="number-input">
                 <mat-label>Ödeme Vadesi (Gün)</mat-label>
-                <input matInput type="number" formControlName="payment_terms" required>
+                <input matInput type="number" formControlName="payment_terms" required min="0">
               </mat-form-field>
             </div>
 
@@ -182,7 +183,7 @@ interface ContentType {
           #campaignSummaryComponent/>
 
         <div class="button-container">
-          <button mat-raised-button color="primary" (click)="onSave()">Kaydet</button>
+          <button mat-raised-button (click)="onSave()">Kaydet</button>
         </div>
       </mat-step>
     </mat-stepper>
@@ -280,21 +281,21 @@ export class CampaignCreatorComponent implements OnInit {
   @ViewChild('influencerTableComponent') tableComponent!: InfluencerTableComponent;
   @ViewChild('campaignSummaryComponent') summaryComponent!: CampaignSummaryComponent;
 
-  constructor(private fb: FormBuilder, private http: HttpClient) {
+  constructor(private fb: FormBuilder, private http: HttpClient, private snack: MatSnackBar) {
     const now = new Date();
     now.setMonth(9);
     now.setDate(11);
 
     this.campaignForm = this.fb.group({
-      brand: ['', Validators.required],
-      name: ['', [Validators.required, Validators.maxLength(250)]],
-      brief: [''],
-      url: ['', Validators.required],
-      start_date: [null, Validators.required],
-      payment_terms: [0, [Validators.required, Validators.min(1)]],
+      brand: ['Siemens', Validators.required],
+      name: ['Siemens Kahve Makinasi Black Friday', [Validators.required, Validators.maxLength(250)]],
+      brief: ['Akilli kahve hazirlama, farkli icecek secenekleri ve kullanici dostu arayuz'],
+      url: ['https://www.bosch-home.com.tr/urun-listesi/elektrikli-supurgeler/sarjli-dikey-supurgeler/unlimited/unlimited10', Validators.required],
+      start_date: [now, Validators.required],
+      payment_terms: [60, [Validators.required, Validators.min(0)]],
+      cc_emails: [''],
       platforms: [[], Validators.required],
       contentTypes: this.fb.array([]),
-      cc_emails: [''],
     });
   }
 
@@ -389,11 +390,11 @@ export class CampaignCreatorComponent implements OnInit {
     const value = (event.value || '').trim();
     if (value && this.isValidEmail(value)) {
       this.ccEmails.push(value);
-      this.campaignForm.patchValue({cc_emails: this.ccEmails.join(',')});
+      this.campaignForm.patchValue({ cc_emails: this.ccEmails.join(',') });
       event.chipInput!.clear();
     } else if (value) {
       // Set error state
-      this.campaignForm.get('cc_emails')?.setErrors({'invalidEmail': true});
+      this.campaignForm.get('cc_emails')?.setErrors({ 'invalidEmail': true });
     }
   }
 
@@ -401,18 +402,51 @@ export class CampaignCreatorComponent implements OnInit {
     const index = this.ccEmails.indexOf(email);
     if (index >= 0) {
       this.ccEmails.splice(index, 1);
-      this.campaignForm.patchValue({cc_emails: this.ccEmails.join(',')});
+      this.campaignForm.patchValue({ cc_emails: this.ccEmails.join(',') });
     }
   }
 
   onSave() {
     const onlySelectedServices = this.campaignForm.value.contentTypes.filter((x: any) => x.selected);
+    const scope = onlySelectedServices.map((x: any) => `${x.count} ${x.platform} ${x.name}`).join('|');
 
-    console.log('Campaign Form Value:', this.campaignForm.value);
-    console.log('Influencers:', this.summaryComponent.influencers);
+    if (scope === '') {
+      this.snack.open('Kapsam boş olamaz. Lütfen en az bir içerik türü seçin', 'Kapat', {
+        verticalPosition: 'top',
+        duration: 3e4,
+      });
+      return;
+    }
 
-    const scope = onlySelectedServices.map((x: any) => `${x.count} ${x.platform} ${x.name}`).join('\n');
+    if (this.selectorComponent.selectedInfluencers.length === 0) {
+      this.snack.open('Influencerlar boş olamaz. Lütfen en az bir influencer seçin', 'Kapat', {
+        verticalPosition: 'top',
+        duration: 3e4,
+      });
+      return;
+    }
 
-    console.log('Scope:', scope);
+    firstValueFrom(this.http.post('https://auto.creatorstation.com/webhook/create-campaign', {
+      scope,
+      brand: this.campaignForm.value.brand,
+      start_date: this.campaignForm.value.start_date,
+      payment_terms: this.campaignForm.value.payment_terms,
+      name: this.campaignForm.value.name,
+      brief: this.campaignForm.value.brief,
+      url: this.campaignForm.value.url,
+      cc_emails: this.campaignForm.value.cc_emails,
+      influencers: this.summaryComponent.influencers.map((inf: any) => ({
+        username: inf.username,
+        selectedEmail: inf.selectedEmail,
+      })),
+    })).then((r) => {
+      this.snack.open('Kampanya başarıyla oluşturuldu', 'Kapat', {
+        verticalPosition: 'top', duration: 3e4,
+      });
+    }).catch(e => {
+      this.snack.open('Kampanya oluşturulurken bir hata oluştu', 'Kapat', {
+        verticalPosition: 'top', duration: 3e4,
+      });
+    });
   }
 }
